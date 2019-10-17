@@ -68,6 +68,10 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	hy28a.dtbo \
 	hy28b.dtbo \
 	hy28b-2017.dtbo \
+	hyperpixel4-pi3.dtbo \
+	hyperpixel4-pi4.dtbo \
+	hyperpixel4-square-pi3.dtbo \
+	hyperpixel4-square-pi4.dtbo \
 	i-sabre-q2m.dtbo \
 	i2c-bcm2708.dtbo \
 	i2c-gpio.dtbo \
