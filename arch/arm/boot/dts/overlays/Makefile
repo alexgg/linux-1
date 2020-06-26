@@ -206,6 +206,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	w1-gpio.dtbo \
 	w1-gpio-pullup.dtbo \
 	w5500.dtbo \
+	waveshare-sim7600.dtbo \
 	wittypi.dtbo
 
 targets += dtbs dtbs_install
