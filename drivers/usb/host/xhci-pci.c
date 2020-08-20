@@ -13,6 +13,8 @@
 #include <linux/module.h>
 #include <linux/acpi.h>
 
+#include <soc/bcm2835/raspberrypi-firmware.h>
+
 #include "xhci.h"
 #include "xhci-trace.h"
 
@@ -328,6 +330,44 @@ static int xhci_pci_setup(struct usb_hcd *hcd)
 }
 
 /*
+ * On the Raspberry Pi 4, after a PCI reset, VL805's firmware may either be
+ * loaded directly from an EEPROM or, if not present, by the SoC's VideCore.
+ * Inform VideCore that VL805 was just reset, or defer xhci's probe if not yet
+ * joinable trough the mailbox interface.
+ */
+static int raspberrypi_load_vl805_fw(struct pci_dev *pdev)
+{
+#ifdef CONFIG_RASPBERRYPI_FIRMWARE
+	struct device_node *fw_np;
+	struct rpi_firmware *fw;
+	u32 dev_addr;
+	int ret;
+
+	fw_np = of_find_compatible_node(NULL, NULL,
+					"raspberrypi,bcm2835-firmware");
+	if (!fw_np)
+		return 0;
+
+	fw = rpi_firmware_get(fw_np);
+	of_node_put(fw_np);
+	if (!fw)
+		return -EPROBE_DEFER;
+
+	dev_addr = pdev->bus->number << 20 | PCI_SLOT(pdev->devfn) << 15 |
+		   PCI_FUNC(pdev->devfn) << 12;
+
+	ret = rpi_firmware_property(fw, RPI_FIRMWARE_NOTIFY_XHCI_RESET,
+				    &dev_addr, sizeof(dev_addr));
+	if (ret)
+		return ret;
+
+	dev_dbg(&pdev->dev, "loaded Raspberry Pi's VL805 firmware\n");
+
+#endif
+	return 0;
+}
+
+/*
  * We need to register our own PCI probe function (instead of the USB core's
  * function) in order to create a second roothub under xHCI.
  */
@@ -339,6 +379,16 @@ static int xhci_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	struct usb_hcd *hcd;
 
 	driver = (struct hc_driver *)id->driver_data;
+
+	if (dev->vendor == PCI_VENDOR_ID_VIA && dev->device == 0x3483) {
+		retval = raspberrypi_load_vl805_fw(dev);
+		if (retval) {
+			if (retval != -EPROBE_DEFER)
+				dev_err(&dev->dev,
+					"Failed to load VL805's firmware");
+			return retval;
+		}
+	}
 
 	/* Prevent runtime suspending between USB-2 and USB-3 initialization */
 	pm_runtime_get_noresume(&dev->dev);
