@@ -198,9 +198,17 @@
 };
 
 &pcie0 {
-	usb@1,0 {
+	pci@1,0 {
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges;
+
 		reg = <0 0 0 0 0>;
-		resets = <&reset RASPBERRYPI_FIRMWARE_RESET_ID_USB>;
+
+		usb@1,0 {
+			reg = <0x10000 0 0 0 0>;
+			resets = <&reset RASPBERRYPI_FIRMWARE_RESET_ID_USB>;
+		};
 	};
 };
 
